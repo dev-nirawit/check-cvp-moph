@@ -421,7 +421,7 @@ export default {
     },
     async readSmartcard() {
       axios
-        .get(`${process.env.apiCIDReader}/read-card-only?readImageFlag=false`)
+        .get(process.env.apiCIDReader)
         .then(v => {
           console.log(v);
           if (this.status_readcid_in == false) {

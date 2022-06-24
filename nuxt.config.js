@@ -11,8 +11,10 @@ export default {
     },
     target: "static",
     env: {
+        // baseURL: "https://api_excle-cvp-moph.somdej17service.com",
         baseURL: "http://127.0.0.1:4601",
-        apiCIDReader: "http://localhost:8189/api/smartcard"
+        apiCIDReader: "http://localhost:8189/api/smartcard/read-card-only?readImageFlag=false"
+            // apiCIDReader: "http://localhost:3000/moi/getCardData",
     },
     // router: {
     //     base: "/excle-cvp-moph/"
@@ -24,7 +26,11 @@ export default {
         meta: [
             { charset: "utf-8" },
             { name: "viewport", content: "width=device-width, initial-scale=1" },
-            { hid: "description", name: "description", content: "" },
+            {
+                hid: "description",
+                name: "description",
+                content: "ตรวจสอบข้อมูล,somdej17service,somdej17,covid19 check vaccine"
+            },
             { name: "format-detection", content: "telephone=no" }
         ],
         link: [{ rel: "icon", type: "image/x-icon", href: "/favicon.ico" }]
@@ -56,7 +62,6 @@ export default {
         "@nuxtjs/pwa",
         "vue-sweetalert2/nuxt"
     ],
-
     // PWA module configuration: https://go.nuxtjs.dev/pwa
     pwa: {
         manifest: {

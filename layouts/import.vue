@@ -70,7 +70,7 @@
                   v-model="massageStore.message_content_html"
                   outlined
                   label="ข้อความเนื้อหา ต้องเป็น Tag HTML"
-                  :rules="[(v) => !!v || 'กรุณาใส่ข้อมูลด้วยค่ะ ']"
+                  :rules="[v => !!v || 'กรุณาใส่ข้อมูลด้วยค่ะ ']"
                   required
                 ></v-textarea>
               </v-col>
@@ -101,11 +101,11 @@ export default {
       hospital: {
         hospital_code: "10733",
         hospital_name: "โรงพยาบาลสมเด็จพระสังฆราช องค์ที่ 17",
-        his_identifier: "HOSxP XE",
+        his_identifier: "HOSxP XE"
       },
       message_title: "หัวเรื่องข้อความ",
-      message_content_html: "<h3>ทดสอบ</h3><br>ทดสอบระบบ</br>",
-    },
+      message_content_html: "<h3>ทดสอบ</h3><br>ทดสอบระบบ</br>"
+    }
   }),
   created() {
     this.setLocalStorageDefault();
@@ -126,6 +126,10 @@ export default {
       } else {
         this.massageStore = JSON.parse(localStorage.getItem("massageStore"));
       }
+
+      if (!localStorage.getItem("setAutoPrint")) {
+        localStorage.setItem("setAutoPrint", "false");
+      }
     },
     setLocalStorage() {
       if (this.$refs.formSettingMassage.validate()) {
@@ -137,8 +141,8 @@ export default {
     cancelLocalStorage() {
       this.massageStore = JSON.parse(localStorage.getItem("massageStore"));
       this.dialog = false;
-    },
-  },
+    }
+  }
 };
 </script>
 <style>

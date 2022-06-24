@@ -24,6 +24,18 @@
                 }}
               </v-icon></v-chip
             >
+
+            <v-btn
+              rounded
+              color="pink"
+              href="http://61.19.87.252:10733/down/l4tWLL3nrq8d"
+              target="_blank"
+            >
+              <v-icon left>
+                mdi-cloud-download
+              </v-icon>
+              โปรแกรมติดตั้ง อ่านบัตร
+            </v-btn>
           </v-card-title>
           <v-card-text>
             <!-- <v-form
@@ -42,7 +54,11 @@
                 <CardHIS :data="cardHISData" />
               </v-col>
             </v-row>
-
+            <v-row class="d-flex justify-center mt-0">
+              <v-col lg="3" xs="12">
+                <CardSticker :data="cardStickerData" :patient="cardHISData" />
+              </v-col>
+            </v-row>
             <!-- <div v-if="checkDataStatus && readCardData">
                 <p class="headline">
                   {{ readCardData.titleName }}{{ readCardData.fname }}
@@ -377,6 +393,39 @@
           </v-row>
           <v-row align="center" class="mt-4">
             <v-col cols="12">
+              <div class="text-center">
+                <v-chip class="ma-2" color="success" outlined>
+                  <v-icon left>
+                    mdi-database
+                  </v-icon>
+                  รวม : {{ sum_excle.raw_total }}
+                </v-chip>
+
+                <v-chip class="ma-2" color="warning" outlined pill>
+                  <v-icon left>
+                    mdi-database-eye
+                  </v-icon>
+                  พบข้อมูลวัคซีน : {{ sum_excle.cvp_have_data }}
+                </v-chip>
+
+                <v-chip class="ma-2" color="grey" outlined>
+                  <v-icon left>
+                    mdi-database-eye-off-outline
+                  </v-icon>
+                  ไม่พบข้อมูลวัคซีน : {{ sum_excle.cvp_no_vaccine }}
+                </v-chip>
+
+                <v-chip class="ma-2" color="pink darken-3" outlined>
+                  <v-icon left>
+                    mdi-null
+                  </v-icon>
+                  cid ไม่ถูกต้อง หรือ ไม่มีข้อมูล:
+                  {{ sum_excle.cvp_null }}
+                </v-chip>
+              </div>
+            </v-col>
+
+            <v-col cols="12">
               <v-select
                 v-model="select"
                 :items="dataHeader"
@@ -488,19 +537,26 @@ export default {
     patient: {},
     cardCVPData: {},
     cardHISData: {},
+    cardStickerData: {},
     manualPassport: "",
     sendApiManualPassport: false,
     manualValidPassport: true,
     nationality: [],
     selectNationality: null,
-    datacheckPasstportAPI: null
+    datacheckPasstportAPI: null,
+    sum_excle: {
+      raw_total: 0,
+      cvp_have_data: 0,
+      cvp_no_vaccine: 0,
+      cvp_null: 0
+    }
   }),
   created() {
     if (!sessionStorage.getItem("auth_token")) {
       window.location.href = "/";
     } else {
       this.getDataNationality();
-      this.initSmartCard();
+      // this.initSmartCard();
     }
   },
   beforeDestroy() {
@@ -513,6 +569,10 @@ export default {
       }, 1000);
     },
     async inputChanged() {
+      this.sum_excle.raw_total = 0;
+      this.sum_excle.cvp_have_data = 0;
+      this.sum_excle.cvp_no_vaccine = 0;
+      this.sum_excle.cvp_null = 0;
       // console.log("e", e);
       // console.log("file type=", this.ffile.type);
       const xlsxfile = event.target.files ? event.target.files[0] : null;
@@ -555,6 +615,7 @@ export default {
       });
     },
     converDataForTable(data) {
+      this.sum_excle.raw_total = data.length - 1;
       this.dataHeader = [];
       data[0].forEach(v => {
         // console.log("v: " + v);
@@ -598,16 +659,28 @@ export default {
         const data = await DataApi.checkDataToDB(cid);
         console.log("checkDataToDB", data);
         let dataStatus = [];
-        // for await (const v2 of data.data) {
-        //   if (v2.ok) {
-        //     dataStatus.push(v2);
-        //   } else {
-        //     await dataStatus.push(v2.rows.Message);
+
+        if (
+          data.data.data_rs[0].MessageCode == 200 ||
+          data.data.data_rs[0].MessageCode == 201
+        ) {
+          // พบข้อมูลวัคซีน
+          this.sum_excle.cvp_have_data++;
+        } else if (data.data.data_rs[0].MessageCode == 501) {
+          // ไม่พบข้อมูลวัคซีน
+          this.sum_excle.cvp_no_vaccine++;
+        } else {
+          // {} เลขบัตรประชาชน ไม่ถูกต้อง หรือ ไม่่พบข้อมูล
+          this.sum_excle.cvp_null++;
+        }
+        // for await (const d of data.data) {
+        //   if (d.data_rs) {
+        //     if()
         //   }
         // }
 
         await this.dataList[i].pop();
-        await this.dataList[i].push({ rs_api: data.data });
+        await this.dataList[i].push({ rs_api: data.data.data_rs });
         console.log("dataList[i]", this.dataList[i]);
 
         i = i + 1;
@@ -701,6 +774,7 @@ export default {
     async checkDatAPI(cid) {
       this.dose_sum = 0;
       this.patient = {};
+      this.displayTextApiManualRes = [];
       const data = await DataApi.checkDataToDB(cid);
       if (
         (data.data.MessageCode !== undefined) == true &&
@@ -708,7 +782,7 @@ export default {
       ) {
         this.$swal({
           icon: "error",
-          title: `เกิดข้อผิดพลาด ${data.data.MessageCode}`,
+          title: `เกิดข้อผิดพลาด ${data.data.MessageCode || "ไม่พบข้อมูล!"}`,
           html:
             data.data.MessageCode == 501
               ? '<span style="color: red;">เลขบัตรประชาชน ไม่ถูกต้อง!</span>'
@@ -721,36 +795,68 @@ export default {
         });
         this.clearInput();
       } else {
-        if (data.data.patient) {
-          console.log("data.data.patient", data.data.patient);
-          this.cardHISData = data.data.patient;
+        if (data.data.ok == false) {
+          this.$swal({
+            icon: "error",
+            title: `เกิดข้อผิดพลาด ไม่พบข้อมูล!`,
+            footer:
+              '<span style="color: red;">หรือกรุณาติดต่อ เจ้าหน้าที่ หรือผู้ดูแลระบบ</span>'
+          });
+          this.clearInput();
         } else {
-          this.cardHISData = {};
-        }
-        const res_data = data.data.api_data.result;
-        this.cardCVPData = res_data;
-        this.patient = data.data.patient;
-        // this.cardHISData = data.data.patient;
-        if (res_data.vaccine_certificate) {
-          this.checkDataErrorStatus = false;
-          this.checkDataStatus = true;
-          this.displayDataApiManualRes = res_data;
-          this.displayTextApiManualRes = data.data.data_rs;
-          this.sendApiManual = false;
-          this.dose_sum =
-            res_data.vaccine_certificate[0].vaccination_list.length || 0;
-        } else {
-          this.checkDataErrorStatus = true;
-          this.checkDataStatus = false;
-          this.sendApiManual = false;
+          if (data.data.patient) {
+            console.log("data.data.patient", data.data.patient);
+            this.cardHISData = data.data.patient;
+          } else {
+            this.cardHISData = {};
+            // this.cardStickerData = {};
+          }
+          const res_data = data.data.api_data.result;
+          this.cardCVPData = res_data;
+          this.patient = data.data.patient;
+          this.cardStickerData = data.data.data_sticker;
+
+          // this.cardHISData = data.data.patient;
+          if (res_data.vaccine_certificate) {
+            this.checkDataErrorStatus = false;
+            this.checkDataStatus = true;
+            this.displayDataApiManualRes = res_data;
+            this.displayTextApiManualRes = data.data.data_rs;
+            this.sendApiManual = false;
+            this.dose_sum =
+              res_data.vaccine_certificate[0].vaccination_list.length || 0;
+            if (!data.data.patient) {
+              this.cardHISData = {
+                pname: res_data.patient.prefix,
+                fname: res_data.patient.first_name,
+                lname: res_data.patient.last_name,
+                birthday: res_data.patient.birth_date
+              };
+            }
+            console.log(this.cardHISData);
+          } else {
+            this.checkDataErrorStatus = true;
+            this.checkDataStatus = false;
+            this.sendApiManual = false;
+          }
+          // console.log("setAutoPrint", localStorage.getItem("setAutoPrint"));
+          if (localStorage.getItem("setAutoPrint").toLowerCase() === "true") {
+            setTimeout(() => {
+              this.$nuxt.$emit("printAuto");
+            }, 500);
+          }
         }
       }
     },
     async readSmartcard() {
-      axios
-        .get(`${process.env.apiCIDReader}/read-card-only?readImageFlag=false`)
+      var config = {
+        method: "get",
+        url: process.env.apiCIDReader,
+        headers: {}
+      };
+      axios(config)
         .then(v => {
-          console.log(v);
+          // console.log(v);
           if (this.status_readcid_in == false) {
             console.log("บัตรใหม่ครั้งแรก");
             this.status_readcid_in = true;
@@ -801,6 +907,10 @@ export default {
         if (result.isConfirmed) {
           await this.clearInput();
           this.dialog = false;
+          this.sum_excle.raw_total = 0;
+          this.sum_excle.cvp_have_data = 0;
+          this.sum_excle.cvp_no_vaccine = 0;
+          this.sum_excle.cvp_null = 0;
         }
       });
     },
@@ -813,6 +923,10 @@ export default {
       this.ffile = [];
       this.dataList = [];
       this.patient = {};
+      this.checkDataErrorStatus = false;
+      this.cardStickerData = {};
+      this.cardCVPData = {};
+      this.cardHISData = {};
     },
     async getDataNationality() {
       const res = await DataApi.getNationality();
